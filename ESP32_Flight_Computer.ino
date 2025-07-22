@@ -9,22 +9,45 @@
   SDA  -> D19
   AD0  -> D23
   CS   -> D5
-  INT  -> D22
+  INT  -> D16
   RST  -> D4
   PS1  -> 3.3V
   PS0  -> 3.3V
 */
 
 #define BNO08X_CS     5
-#define BNO08X_INT    22
+#define BNO08X_INT    16
 #define BNO08X_RESET  4
 
 Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
 
-float current_roll = 0, current_pitch = 0, current_yaw = 0;
-float roll_offset = 0, pitch_offset = 0, yaw_offset = 0;
+struct Quaternion {
+  float w, x, y, z;
+};
+
+Quaternion q_calib_inv = {1, 0, 0, 0};
 bool isCalibrated = false;
+
+// Quaternion multiplication
+Quaternion multiplyQuaternions(const Quaternion& q1, const Quaternion& q2) {
+  Quaternion r;
+  r.w = q1.w*q2.w - q1.x*q2.x - q1.y*q2.y - q1.z*q2.z;
+  r.x = q1.w*q2.x + q1.x*q2.w + q1.y*q2.z - q1.z*q2.y;
+  r.y = q1.w*q2.y - q1.x*q2.z + q1.y*q2.w + q1.z*q2.x;
+  r.z = q1.w*q2.z + q1.x*q2.y - q1.y*q2.x + q1.z*q2.w;
+  return r;
+}
+
+// Convert quaternion to Euler angles (degrees)
+void quaternionToEuler(const Quaternion& q, float &roll, float &pitch, float &yaw) {
+  roll  = atan2f(2.0f * (q.w * q.x + q.y * q.z), 1.0f - 2.0f * (q.x * q.x + q.y * q.y)) * 180.0f / PI;
+  float sinp = 2.0f * (q.w * q.y - q.z * q.x);
+  if (sinp > 1.0f) sinp = 1.0f;
+  else if (sinp < -1.0f) sinp = -1.0f;
+  pitch = asinf(sinp) * 180.0f / PI;
+  yaw   = atan2f(2.0f * (q.w * q.z + q.x * q.y), 1.0f - 2.0f * (q.y * q.y + q.z * q.z)) * 180.0f / PI;
+}
 
 void setup() {
   Serial.begin(115200);
@@ -61,39 +84,38 @@ void loop() {
   }
 
   if (sensorValue.sensorId == SH2_GAME_ROTATION_VECTOR) {
-    float w = sensorValue.un.gameRotationVector.real;
-    float x = sensorValue.un.gameRotationVector.i;
-    float y = sensorValue.un.gameRotationVector.j;
-    float z = sensorValue.un.gameRotationVector.k;
-
-    // Convert Quaternion to Euler angles (degrees)
-    current_roll  = atan2f(2.0f * (w * x + y * z), 1.0f - 2.0f * (x * x + y * y)) * 180.0f / PI;
-    current_pitch = asinf (2.0f * (w * y - z * x)) * 180.0f / PI;
-    current_yaw   = atan2f(2.0f * (w * z + x * y), 1.0f - 2.0f * (y * y + z * z)) * 180.0f / PI;
+    Quaternion q_current;
+    q_current.w = sensorValue.un.gameRotationVector.real;
+    q_current.x = sensorValue.un.gameRotationVector.i;
+    q_current.y = sensorValue.un.gameRotationVector.j;
+    q_current.z = sensorValue.un.gameRotationVector.k;
 
     if (!isCalibrated) {
-      calibrateZero();
+      q_calib_inv.w = q_current.w;
+      q_calib_inv.x = -q_current.x;
+      q_calib_inv.y = -q_current.y;
+      q_calib_inv.z = -q_current.z;
       isCalibrated = true;
+      Serial.println("Orientation zeroed using quaternion calibration.");
     }
 
-    float roll_zeroed  = wrapAngle(current_roll  - roll_offset);
-    float pitch_zeroed = wrapAngle(current_pitch - pitch_offset);
-    float yaw_zeroed   = wrapAngle(current_yaw   - yaw_offset);
+    Quaternion q_zeroed = multiplyQuaternions(q_calib_inv, q_current);
+
+    float roll, pitch, yaw;
+    quaternionToEuler(q_zeroed, roll, pitch, yaw);
+
+    // Normalize angles to (-180, 180)
+    roll = wrapAngle(roll);
+    pitch = wrapAngle(pitch);
+    yaw = wrapAngle(yaw);
 
     Serial.print("Zeroed Euler angles - Roll: ");
-    Serial.print(roll_zeroed, 2);
+    Serial.print(roll, 2);
     Serial.print("  Pitch: ");
-    Serial.print(pitch_zeroed, 2);
+    Serial.print(pitch, 2);
     Serial.print("  Yaw: ");
-    Serial.println(yaw_zeroed, 2);
+    Serial.println(yaw, 2);
   }
-}
-
-void calibrateZero() {
-  roll_offset = current_roll;
-  pitch_offset = current_pitch;
-  yaw_offset = current_yaw;
-  Serial.println("Orientation zeroed.");
 }
 
 float wrapAngle(float angle) {
