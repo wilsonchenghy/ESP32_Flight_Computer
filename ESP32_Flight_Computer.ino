@@ -1,4 +1,6 @@
 #include <Adafruit_BNO08x.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
 /*
   BNO085 Sensor Connection (SPI Mode):
@@ -28,6 +30,14 @@ struct Quaternion {
 
 Quaternion q_calib_inv = {1, 0, 0, 0};
 bool isCalibrated = false;
+
+// WiFi
+const char* ssid = "xxx";
+const char* password = "xxx";
+
+WebServer server(80);
+
+float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
 
 // Quaternion multiplication
 Quaternion multiplyQuaternions(const Quaternion& q1, const Quaternion& q2) {
@@ -68,6 +78,29 @@ void setup() {
   }
 
   delay(200);  // Give time to stabilize
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi...");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println(" connected!");
+  // Serial.print("ESP32 IP address: ");
+  // Serial.println(WiFi.localIP());
+
+  server.on("/euler", []() {
+    String json = "{";
+    json += "\"roll\":" + String(tx_roll, 2) + ",";
+    json += "\"pitch\":" + String(tx_pitch, 2) + ",";
+    json += "\"yaw\":" + String(tx_yaw, 2);
+    json += "}";
+
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "application/json", json);
+  });
+
+  server.begin();
 }
 
 void loop() {
@@ -108,6 +141,13 @@ void loop() {
     roll = wrapAngle(roll);
     pitch = wrapAngle(pitch);
     yaw = wrapAngle(yaw);
+
+    // Copy to tx euler angles
+    tx_roll = roll;
+    tx_pitch = pitch;
+    tx_yaw = yaw;
+
+    server.handleClient();
 
     Serial.print("Zeroed Euler angles - Roll: ");
     Serial.print(roll, 2);
