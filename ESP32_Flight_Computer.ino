@@ -38,6 +38,7 @@ const char* password = "xxx";
 WebServer server(80);
 
 float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
+float tx_qw = 1.0, tx_qx = 0.0, tx_qy = 0.0, tx_qz = 0.0;
 
 // Quaternion multiplication
 Quaternion multiplyQuaternions(const Quaternion& q1, const Quaternion& q2) {
@@ -100,6 +101,18 @@ void setup() {
     server.send(200, "application/json", json);
   });
 
+  // server.on("/quaternion", []() {
+  //   String json = "{";
+  //   json += "\"w\":" + String(tx_qw, 6) + ",";
+  //   json += "\"x\":" + String(tx_qx, 6) + ",";
+  //   json += "\"y\":" + String(tx_qy, 6) + ",";
+  //   json += "\"z\":" + String(tx_qz, 6);
+  //   json += "}";
+
+  //   server.sendHeader("Access-Control-Allow-Origin", "*");
+  //   server.send(200, "application/json", json);
+  // });
+
   server.begin();
 }
 
@@ -149,12 +162,37 @@ void loop() {
 
     server.handleClient();
 
-    Serial.print("Zeroed Euler angles - Roll: ");
-    Serial.print(roll, 2);
-    Serial.print("  Pitch: ");
-    Serial.print(pitch, 2);
-    Serial.print("  Yaw: ");
-    Serial.println(yaw, 2);
+    // Serial.print("Zeroed Euler angles - Roll: ");
+    // Serial.print(roll, 2);
+    // Serial.print("  Pitch: ");
+    // Serial.print(pitch, 2);
+    // Serial.print("  Yaw: ");
+    // Serial.println(yaw, 2);
+
+    // String serialJson = "{";
+    // serialJson += "\"roll\":" + String(roll, 2) + ",";
+    // serialJson += "\"pitch\":" + String(pitch, 2) + ",";
+    // serialJson += "\"yaw\":" + String(yaw, 2);
+    // serialJson += "}";
+
+    // Serial.println(serialJson);
+
+    // tx_qw = q_zeroed.w;
+    // tx_qx = q_zeroed.x;
+    // tx_qy = q_zeroed.y;
+    // tx_qz = q_zeroed.z;
+
+    // server.handleClient();
+
+    // Print to Serial as JSON
+    String serialJson = "{";
+    serialJson += "\"w\":" + String(q_zeroed.w, 6) + ",";
+    serialJson += "\"x\":" + String(q_zeroed.x, 6) + ",";
+    serialJson += "\"y\":" + String(q_zeroed.y, 6) + ",";
+    serialJson += "\"z\":" + String(q_zeroed.z, 6);
+    serialJson += "}";
+
+    Serial.println(serialJson);
   }
 }
 
