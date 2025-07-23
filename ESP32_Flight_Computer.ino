@@ -19,10 +19,17 @@
   PS0  -> 3.3V
 */
 
-#define BNO08X_CS     5
-#define BNO08X_INT    16
-#define BNO08X_RESET  4
+#define BNO08X_CS 5
+#define BNO08X_INT 16
+#define BNO08X_RESET 4
 #define FLASH_CS 2
+#define BUZZER_PIN 14
+#define BUTTON_PIN 13
+#define SERVO_PIN_PITCH 27
+#define SERVO_PIN_ROLL 26
+#define GREEN_LED_PIN 32
+#define RED_LED_PIN 33
+#define MOSFET_PIN 12
 
 Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
@@ -113,6 +120,19 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
 
+  // LED
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  pinMode(RED_LED_PIN, OUTPUT);
+
+  digitalWrite(GREEN_LED_PIN, HIGH);
+  digitalWrite(RED_LED_PIN, HIGH);
+
+  // Button
+  pinMode(BUTTON_PIN, INPUT);  // button with external pull-down
+
+  // MOSFET
+  pinMode(MOSFET_PIN, OUTPUT);
+
   // BNO085
   Serial.println("Starting BNO085...");
 
@@ -171,8 +191,24 @@ void setup() {
   // digitalWrite(FLASH_CS, HIGH);  // Deselect flash chip
 }
 
+
 void loop() {
   delay(10);
+
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    Serial.println("Button Pressed");
+
+    // tone(BUZZER_PIN, 1000); // 1000 Hz tone
+    // delay(200); // Beep duration
+    // noTone(BUZZER_PIN);
+
+    // delay(100);
+
+    // // Beep 2
+    // tone(BUZZER_PIN, 1000);
+    // delay(200); // Beep duration
+    // noTone(BUZZER_PIN);
+  }
 
   if (bno08x.wasReset()) {
     Serial.println("Sensor was reset. Re-enabling reports...");
