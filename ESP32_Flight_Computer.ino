@@ -1,8 +1,12 @@
 #include <Adafruit_BNO08x.h>
 #include <WiFi.h>
 #include <WebServer.h>
+// #include <Wire.h>
+// #include <Adafruit_BMP085.h>
 // #include <SPI.h>
 // #include <ArduinoJson.h>
+
+// #define seaLevelPressure_hPa 975.2 // hPa, hPa*100 to Pa
 
 /*
   BNO085 Sensor Connection (SPI Mode):
@@ -69,6 +73,12 @@ WebServer server(80);
 
 float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
 float tx_qw = 1.0, tx_qx = 0.0, tx_qy = 0.0, tx_qz = 0.0;
+
+// BMP180
+// Adafruit_BMP085 bmp;
+// float altitude = 0;
+// float filteredAltitude = 0;
+// float filterAlpha = 0.1;
 
 // Flash Chip
 // SPIClass spi = SPIClass(VSPI);
@@ -150,6 +160,14 @@ void setup() {
 
   delay(200);  // Give time to stabilize
 
+  // BMP180
+  // if (!bmp.begin()) {
+  //   Serial.println("Failed to find BMP180 chip");
+  //   while (1) delay(10);
+  // }
+  // Serial.println("BMP180 Sensor Initialized");
+
+  // WiFi
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
@@ -275,12 +293,19 @@ void loop() {
 
     // server.handleClient();
 
+    // BMP180
+    // altitude = bmp.readAltitude(seaLevelPressure_hPa * 100);
+    // filteredAltitude = filterAlpha * altitude + (1 - filterAlpha) * filteredAltitude;
+
     // Print to Serial as JSON
     String serialJson = "{";
     serialJson += "\"w\":" + String(q_zeroed.w, 6) + ",";
     serialJson += "\"x\":" + String(q_zeroed.x, 6) + ",";
     serialJson += "\"y\":" + String(q_zeroed.y, 6) + ",";
     serialJson += "\"z\":" + String(q_zeroed.z, 6);
+    // serialJson += "\"z\":" + String(q_zeroed.z, 6) + ",";
+    // serialJson += "\"altitude\":" + String(altitude, 2) + ",";
+    // serialJson += "\"filteredAltitude\":" + String(filteredAltitude, 2);
     serialJson += "}";
 
     Serial.println(serialJson);
