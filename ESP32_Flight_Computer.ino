@@ -1,6 +1,7 @@
 #include <Adafruit_BNO08x.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ESP32Servo.h>
 // #include <Wire.h>
 // #include <Adafruit_BMP085.h>
 // #include <SPI.h>
@@ -29,8 +30,9 @@
 #define FLASH_CS 2
 #define BUZZER_PIN 14
 #define BUTTON_PIN 13
-#define SERVO_PIN_PITCH 27
-#define SERVO_PIN_ROLL 26
+#define PITCH_SERVO_PIN 27
+#define ROLL_SERVO_PIN 26
+#define PARACHUTE_SERVO_PIN 25
 #define GREEN_LED_PIN 32
 #define RED_LED_PIN 33
 #define MOSFET_PIN 12
@@ -73,6 +75,27 @@ WebServer server(80);
 
 float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
 float tx_qw = 1.0, tx_qx = 0.0, tx_qy = 0.0, tx_qz = 0.0;
+
+// Servo
+Servo pitchServo;
+Servo rollServo;
+Servo parachuteServo;
+
+void moveServo() {
+  // 0 to 90 degrees
+  for (int pos = 0; pos <= 90; pos += 1) {
+    pitchServo.write(pos);
+    delay(15);
+  }
+  delay(500);
+
+  // 90 to 0 degrees
+  for (int pos = 90; pos >= 0; pos -= 1) {
+    pitchServo.write(pos);
+    delay(15);
+  }
+  delay(500);
+}
 
 // BMP180
 // Adafruit_BMP085 bmp;
@@ -142,6 +165,15 @@ void setup() {
 
   // MOSFET
   pinMode(MOSFET_PIN, OUTPUT);
+
+  // Servo
+  pitchServo.attach(PITCH_SERVO_PIN);
+  rollServo.attach(ROLL_SERVO_PIN);
+  parachuteServo.attach(PARACHUTE_SERVO_PIN);
+
+  pitchServo.write(90);
+  rollServo.write(90);
+  parachuteServo.write(90);
 
   // BNO085
   Serial.println("Starting BNO085...");
@@ -215,6 +247,8 @@ void loop() {
 
   if (digitalRead(BUTTON_PIN) == HIGH) {
     Serial.println("Button Pressed");
+
+    moveServo();
 
     // tone(BUZZER_PIN, 1000); // 1000 Hz tone
     // delay(200); // Beep duration
