@@ -1,6 +1,8 @@
 #include <Adafruit_BNO08x.h>
 #include <WiFi.h>
 #include <WebServer.h>
+// #include <SPI.h>
+// #include <ArduinoJson.h>
 
 /*
   BNO085 Sensor Connection (SPI Mode):
@@ -20,6 +22,7 @@
 #define BNO08X_CS     5
 #define BNO08X_INT    16
 #define BNO08X_RESET  4
+#define FLASH_CS 2
 
 Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
@@ -30,15 +33,6 @@ struct Quaternion {
 
 Quaternion q_calib_inv = {1, 0, 0, 0};
 bool isCalibrated = false;
-
-// WiFi
-const char* ssid = "xxx";
-const char* password = "xxx";
-
-WebServer server(80);
-
-float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
-float tx_qw = 1.0, tx_qx = 0.0, tx_qy = 0.0, tx_qz = 0.0;
 
 // Quaternion multiplication
 Quaternion multiplyQuaternions(const Quaternion& q1, const Quaternion& q2) {
@@ -60,10 +54,66 @@ void quaternionToEuler(const Quaternion& q, float &roll, float &pitch, float &ya
   yaw   = atan2f(2.0f * (q.w * q.z + q.x * q.y), 1.0f - 2.0f * (q.y * q.y + q.z * q.z)) * 180.0f / PI;
 }
 
+// WiFi
+const char* ssid = "BELL422";
+const char* password = "17F94429DE2F";
+
+WebServer server(80);
+
+float tx_roll = 0.0, tx_pitch = 0.0, tx_yaw = 0.0;
+float tx_qw = 1.0, tx_qx = 0.0, tx_qy = 0.0, tx_qz = 0.0;
+
+// Flash Chip
+// SPIClass spi = SPIClass(VSPI);
+
+// #define CMD_WRITE_ENABLE  0x06
+// #define CMD_PAGE_PROGRAM  0x02
+// #define CMD_READ_DATA     0x03
+
+// void flashWriteEnable() {
+//   digitalWrite(FLASH_CS, LOW);
+//   spi.transfer(CMD_WRITE_ENABLE);
+//   digitalWrite(FLASH_CS, HIGH);
+// }
+
+// void flashWriteBytes(uint32_t address, const uint8_t* data, size_t length) {
+//   flashWriteEnable();
+//   digitalWrite(FLASH_CS, LOW);
+
+//   spi.transfer(CMD_PAGE_PROGRAM);
+//   spi.transfer((address >> 16) & 0xFF);
+//   spi.transfer((address >> 8) & 0xFF);
+//   spi.transfer(address & 0xFF);
+
+//   for (size_t i = 0; i < length; i++) {
+//     spi.transfer(data[i]);
+//   }
+
+//   digitalWrite(FLASH_CS, HIGH);
+//   delay(5); // Wait for write to complete
+// }
+
+// void flashReadBytes(uint32_t address, uint8_t* buffer, size_t length) {
+//   digitalWrite(FLASH_CS, LOW);
+
+//   spi.transfer(CMD_READ_DATA);
+//   spi.transfer((address >> 16) & 0xFF);
+//   spi.transfer((address >> 8) & 0xFF);
+//   spi.transfer(address & 0xFF);
+
+//   for (size_t i = 0; i < length; i++) {
+//     buffer[i] = spi.transfer(0x00);
+//   }
+
+//   digitalWrite(FLASH_CS, HIGH);
+// }
+
+
 void setup() {
   Serial.begin(115200);
   while (!Serial) delay(10);
 
+  // BNO085
   Serial.println("Starting BNO085...");
 
   if (!bno08x.begin_SPI(BNO08X_CS, BNO08X_INT)) {
@@ -114,6 +164,11 @@ void setup() {
   // });
 
   server.begin();
+
+  // Flash Chip
+  // spi.begin();
+  // pinMode(FLASH_CS, OUTPUT);
+  // digitalWrite(FLASH_CS, HIGH);  // Deselect flash chip
 }
 
 void loop() {
@@ -193,6 +248,28 @@ void loop() {
     serialJson += "}";
 
     Serial.println(serialJson);
+
+    // Flash Chip
+    // StaticJsonDocument<128> doc;
+    // doc["w"] = q_zeroed.w;
+    // doc["x"] = q_zeroed.x;
+    // doc["y"] = q_zeroed.y;
+    // doc["z"] = q_zeroed.z;
+
+    // char jsonBuffer[128];
+    // size_t jsonLen = serializeJson(doc, jsonBuffer);
+
+    // // --- Write JSON to flash ---
+    // uint32_t flashAddr = 0x000000; // Should change this to allow multiple logs and don't always write to the same address
+    // flashWriteBytes(flashAddr, (uint8_t*)jsonBuffer, jsonLen);
+
+    // // --- Read back from flash for verification ---
+    // uint8_t readBack[128] = {0};
+    // flashReadBytes(flashAddr, readBack, jsonLen);
+
+    // Serial.print("Read back from flash: ");
+    // Serial.write(readBack, jsonLen);
+    // Serial.println();
   }
 }
 
